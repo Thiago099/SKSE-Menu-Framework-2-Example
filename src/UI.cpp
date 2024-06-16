@@ -7,7 +7,7 @@ void UI::Register() {
     }
 
     Configuration::Example2::Buffer[0] = '\0';
-    SKSEMenuFramework::SetSection("SKSE Menu Framework Compiled Example 0.2");
+    SKSEMenuFramework::SetSection("SKSE Menu Framework Compiled Example");
     SKSEMenuFramework::AddSectionItem("Font Awesome", Example4::Render);
     SKSEMenuFramework::AddSectionItem("Add Item", Example1::Render);
     SKSEMenuFramework::AddSectionItem("Folder Example/Example 1", Example2::Render);
