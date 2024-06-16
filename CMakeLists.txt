@@ -23,8 +23,8 @@ set(steam_mods_output true)
 cmake_minimum_required(VERSION 3.21)
 # Set your project name. This will be the name of your SKSE .dll file.
 set(AUTHOR_NAME "AuthorName")
-set(PRODUCT_NAME "SKSEMenuFrameworkTemplate0.2")
-set(BEAUTIFUL_NAME "SKSE Menu Framework Template")
+set(PRODUCT_NAME "SKSEMenuFrameworkExample")
+set(BEAUTIFUL_NAME "SKSE Menu Framework Example")
 
 project(${PRODUCT_NAME} VERSION 0.2.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
