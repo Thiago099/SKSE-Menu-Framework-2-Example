@@ -5,6 +5,7 @@ void UI::Register() {
     if (!SKSEMenuFramework::IsInstalled()) {
         return;
     }
+    Example3::filter = new ImGuiTextFilter();
     Configuration::Example2::Buffer[0] = '\0';
     SKSEMenuFramework::SetSection("SKSE Menu Framework Compiled Example 4");
     SKSEMenuFramework::AddSectionItem("Font Awesome", Example4::Render);
