@@ -6,7 +6,6 @@
 #include <string>
 
 static auto menuFramework = GetModuleHandle(L"SKSEMenuFramework");
-typedef void(__stdcall* RenderFunction)();
 #define MENU_WINDOW SKSEMenuFramework::Model::WindowInterface*
 
 namespace SKSEMenuFramework {
