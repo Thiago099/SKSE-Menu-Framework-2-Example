@@ -5,9 +5,8 @@ void UI::Register() {
     if (!SKSEMenuFramework::IsInstalled()) {
         return;
     }
-
     Configuration::Example2::Buffer[0] = '\0';
-    SKSEMenuFramework::SetSection("SKSE Menu Framework Compiled Example");
+    SKSEMenuFramework::SetSection("SKSE Menu Framework Compiled Example 4");
     SKSEMenuFramework::AddSectionItem("Font Awesome", Example4::Render);
     SKSEMenuFramework::AddSectionItem("Add Item", Example1::Render);
     SKSEMenuFramework::AddSectionItem("Folder Example/Example 1", Example2::Render);
@@ -93,6 +92,8 @@ void __stdcall UI::Example3::Render() {
                                    ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
                                    ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_ScrollY;
 
+    filter->Draw();
+
     if (ImGui::BeginTable("table1", 3, flags)) {
         ImGui::TableSetupColumn("One");
         ImGui::TableSetupColumn("Two");
@@ -105,6 +106,14 @@ void __stdcall UI::Example3::Render() {
                 ImGui::TableSetColumnIndex(column);
                 char buf[32];
                 sprintf(buf, "Hello %d,%d", column, row);
+
+                if (filter->PassFilter(buf)) {
+                    FontAwesome::PushSolid();
+                    ImGui::Text(CheckMark.c_str());
+                    FontAwesome::Pop();
+                    ImGui::SameLine();
+                }
+
                 if (column == 2) {
                     ImGui::Button(buf, ImVec2(-FLT_MIN, 0.0f));
                 } else {

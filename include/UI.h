@@ -15,6 +15,8 @@ namespace UI {
         inline MENU_WINDOW ExampleWindow;
     }
     namespace Example3 {
+        inline ImGuiTextFilter* filter = new ImGuiTextFilter();
+        inline std::string CheckMark = FontAwesome::UnicodeToUtf8(0xf00c);
         void __stdcall Render();
     }
     namespace Example4 {

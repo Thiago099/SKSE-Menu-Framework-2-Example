@@ -1,4 +1,5 @@
 #include <windows.h>
+
 #include <cassert>
 #include <codecvt>
 #include <locale>
@@ -10,7 +11,7 @@ typedef void(__stdcall* RenderFunction)();
 
 namespace SKSEMenuFramework {
 
-    inline bool IsInstalled(){
+    inline bool IsInstalled() {
         constexpr auto dllPath = "Data/SKSE/Plugins/SKSEMenuFramework.dll";
         return std::filesystem::exists(dllPath);
     }
@@ -87,9 +88,7 @@ namespace FontAwesome {
     }
 }
 
-
 #pragma region Structs
-
 
 typedef struct ImDrawChannel ImDrawChannel;
 typedef struct ImDrawCmd ImDrawCmd;
@@ -1204,11 +1203,57 @@ typedef struct ImVector_ImGuiTextRange {
     ImGuiTextRange* Data;
 } ImVector_ImGuiTextRange;
 
-struct ImGuiTextFilter {
-    char InputBuf[256];
-    ImVector_ImGuiTextRange Filters;
-    int CountGrep;
+class ImGuiTextFilter {
+private:
+    struct Data {
+        char InputBuf[256];
+        ImVector_ImGuiTextRange Filters;
+        int CountGrep;
+    };
+    Data* data;
+    static inline Data* Create(const char* default_filter) {
+        using func_t = Data* (*)(const char*);
+        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_ImGuiTextFilter"));
+        return func(default_filter);
+    }
+    inline void Destroy() {
+        using func_t = void (*)(Data*);
+        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_destroy"));
+        return func(data);
+    }
+
+public:
+    ImGuiTextFilter(const char* default_filter = "") { 
+        data = Create(default_filter); 
+    }
+    ~ImGuiTextFilter() { Destroy(); }
+    inline bool Draw(const char* label = "Filter (inc,-exc)", float width = 0.0f) {
+        using func_t = bool (*)(Data*, const char*, float);
+        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_Draw"));
+        return func(data, label, width);
+    }
+    inline bool PassFilter(const char* text, const char* text_end = NULL) {
+        using func_t = bool (*)(Data*, const char*, const char*);
+        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_PassFilter"));
+        return func(data, text, text_end);
+    }
+    inline void Build() {
+        using func_t = void (*)(Data*);
+        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_Build"));
+        return func(data);
+    }
+    inline void Clear() {
+        using func_t = void (*)(Data*);
+        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_Clear"));
+        return func(data);
+    }
+    inline bool IsActive() {
+        using func_t = bool (*)(Data*);
+        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_IsActive"));
+        return func(data);
+    }
 };
+
 typedef struct ImGuiTextRange ImGuiTextRange;
 typedef struct ImVector_char {
     int Size;
@@ -4404,20 +4449,20 @@ namespace ImGui {
         return func();
     }
     inline bool Combo(const char* label, int* current_item, const char* const items[], int items_count,
-                              int popup_max_height_in_items = -1) {
+                      int popup_max_height_in_items = -1) {
         using func_t = bool (*)(const char*, int*, const char* const[], int, int);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igCombo_Str_arr"));
         return func(label, current_item, items, items_count, popup_max_height_in_items);
     }
     inline bool Combo(const char* label, int* current_item, const char* items_separated_by_zeros,
-                          int popup_max_height_in_items = -1) {
+                      int popup_max_height_in_items = -1) {
         using func_t = bool (*)(const char*, int*, const char*, int);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igCombo_Str"));
         return func(label, current_item, items_separated_by_zeros, popup_max_height_in_items);
     }
     inline bool Combo(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx),
-                               void* user_data, int items_count, int popup_max_height_in_items = -1) {
-        using func_t = bool (*)(const char*, int*, const char* (*)(void*, int), void*,int, int);
+                      void* user_data, int items_count, int popup_max_height_in_items = -1) {
+        using func_t = bool (*)(const char*, int*, const char* (*)(void*, int), void*, int, int);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igCombo_FnStrPtr"));
         return func(label, current_item, getter, user_data, items_count, popup_max_height_in_items);
     }
@@ -4804,13 +4849,13 @@ namespace ImGui {
         return func(is_open, cond);
     }
     inline bool Selectable(const char* label, bool selected, ImGuiSelectableFlags flags = 0,
-                                const ImVec2 size = ImVec2(0, 0)) {
+                           const ImVec2 size = ImVec2(0, 0)) {
         using func_t = bool (*)(const char*, bool, ImGuiSelectableFlags, const ImVec2);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igSelectable_Bool"));
         return func(label, selected, flags, size);
     }
     inline bool Selectable(const char* label, bool* p_selected, ImGuiSelectableFlags flags = 0,
-                                   const ImVec2 size = ImVec2(0, 0)) {
+                           const ImVec2 size = ImVec2(0, 0)) {
         using func_t = bool (*)(const char*, bool*, ImGuiSelectableFlags, const ImVec2);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igSelectable_BoolPtr"));
         return func(label, p_selected, flags, size);
@@ -4826,54 +4871,46 @@ namespace ImGui {
         return func();
     }
     inline bool ListBox(const char* label, int* current_item, const char* const items[], int items_count,
-                                int height_in_items = -1) {
-        using func_t = bool (*)(const char*, int*, const char* const [], int, int);
+                        int height_in_items = -1) {
+        using func_t = bool (*)(const char*, int*, const char* const[], int, int);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igListBox_Str_arr"));
         return func(label, current_item, items, items_count, height_in_items);
     }
     inline bool ListBox(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx),
-                                 void* user_data, int items_count, int height_in_items = -1) {
+                        void* user_data, int items_count, int height_in_items = -1) {
         using func_t = bool (*)(const char*, int*, const char* (*)(void*, int), void*, int, int);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igListBox_FnStrPtr"));
         return func(label, current_item, getter, user_data, items_count, height_in_items);
     }
     inline void PlotLines(const char* label, const float* values, int values_count, int values_offset = 0,
-                                   const char* overlay_text = NULL, float scale_min = FLT_MAX,
-                                   float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0, 0),
-                                   int stride = sizeof(float)) {
+                          const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX,
+                          ImVec2 graph_size = ImVec2(0, 0), int stride = sizeof(float)) {
         using func_t = void (*)(const char*, const float*, int, int, const char*, float, float, ImVec2, int);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igPlotLines_FloatPtr"));
         return func(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride);
     }
-    inline void PlotLines(const char* label, float (*values_getter)(void* data, int idx), void* data,
-                                     int values_count, int values_offset = 0, const char* overlay_text = NULL,
-                                     float scale_min = FLT_MAX, float scale_max = FLT_MAX,
-                                     ImVec2 graph_size = ImVec2(0, 0)) {
-        using func_t =
-            void (*)(const char*, float (*)(void*, int), void*, int,
-                     int, const char*, float, float, ImVec2);
+    inline void PlotLines(const char* label, float (*values_getter)(void* data, int idx), void* data, int values_count,
+                          int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX,
+                          float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0, 0)) {
+        using func_t = void (*)(const char*, float (*)(void*, int), void*, int, int, const char*, float, float, ImVec2);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igPlotLines_FnFloatPtr"));
-        return func(label, values_getter, data, values_count, values_offset,
-                    overlay_text, scale_min, scale_max, graph_size);
+        return func(label, values_getter, data, values_count, values_offset, overlay_text, scale_min, scale_max,
+                    graph_size);
     }
     inline void PlotHistogram(const char* label, const float* values, int values_count, int values_offset = 0,
-                                       const char* overlay_text = NULL, float scale_min = FLT_MAX,
-                                       float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0, 0),
-                                       int stride = sizeof(float)) {
+                              const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX,
+                              ImVec2 graph_size = ImVec2(0, 0), int stride = sizeof(float)) {
         using func_t = void (*)(const char*, const float*, int, int, const char*, float, float, ImVec2, int);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igPlotHistogram_FloatPtr"));
         return func(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride);
     }
     inline void PlotHistogram(const char* label, float (*values_getter)(void* data, int idx), void* data,
-                                         int values_count, int values_offset = 0, const char* overlay_text = NULL,
-                                         float scale_min = FLT_MAX, float scale_max = FLT_MAX,
-                                         ImVec2 graph_size = ImVec2(0, 0)) {
-        using func_t =
-            void (*)(const char*, float (*)(void*, int), void*, int,
-                     int, const char*, float, float, ImVec2);
+                              int values_count, int values_offset = 0, const char* overlay_text = NULL,
+                              float scale_min = FLT_MAX, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0, 0)) {
+        using func_t = void (*)(const char*, float (*)(void*, int), void*, int, int, const char*, float, float, ImVec2);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igPlotHistogram_FnFloatPtr"));
-        return func(label, values_getter, data, values_count, values_offset,
-                    overlay_text, scale_min, scale_max, graph_size);
+        return func(label, values_getter, data, values_count, values_offset, overlay_text, scale_min, scale_max,
+                    graph_size);
     }
     inline void Value(const char* prefix, bool b) {
         using func_t = void (*)(const char*, bool);
@@ -5103,7 +5140,7 @@ namespace ImGui {
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igTableGetRowIndex"));
         return func();
     }
-    inline const char* TableGetColumnName(int column_n  = -1) {
+    inline const char* TableGetColumnName(int column_n = -1) {
         using func_t = const char* (*)(int);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igTableGetColumnName_Int"));
         return func(column_n);
@@ -5733,7 +5770,8 @@ namespace ImGui {
     namespace ImGuiTableSortSpecsManager {
         inline ImGuiTableSortSpecs* Create(void) {
             using func_t = ImGuiTableSortSpecs* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableSortSpecs_ImGuiTableSortSpecs"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableSortSpecs_ImGuiTableSortSpecs"));
             return func();
         }
         inline void Destroy(ImGuiTableSortSpecs* self) {
@@ -5831,7 +5869,7 @@ namespace ImGui {
             return func(self, str);
         }
         inline void SetKeyEventNativeData(ImGuiIO* self, ImGuiKey key, int native_keycode, int native_scancode,
-                                                  int native_legacy_index) {
+                                          int native_legacy_index) {
             using func_t = void (*)(ImGuiIO*, ImGuiKey, int, int, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiIO_SetKeyEventNativeData"));
             return func(self, key, native_keycode, native_scancode, native_legacy_index);
@@ -5865,7 +5903,6 @@ namespace ImGui {
 
     namespace ImGuiInputTextCallbackDataManager {
 
-        
         inline ImGuiInputTextCallbackData* Create(void) {
             using func_t = ImGuiInputTextCallbackData* (*)();
             func_t func = reinterpret_cast<func_t>(
@@ -5879,18 +5916,20 @@ namespace ImGui {
         }
         inline void DeleteChars(ImGuiInputTextCallbackData* self, int pos, int bytes_count) {
             using func_t = void (*)(ImGuiInputTextCallbackData*, int, int);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextCallbackData_DeleteChars"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextCallbackData_DeleteChars"));
             return func(self, pos, bytes_count);
         }
-        inline void InsertChars(ImGuiInputTextCallbackData* self, int pos, const char* text,
-                                                           const char* text_end) {
+        inline void InsertChars(ImGuiInputTextCallbackData* self, int pos, const char* text, const char* text_end) {
             using func_t = void (*)(ImGuiInputTextCallbackData*, int, const char*, const char*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextCallbackData_InsertChars"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextCallbackData_InsertChars"));
             return func(self, pos, text, text_end);
         }
         inline void SelectAll(ImGuiInputTextCallbackData* self) {
             using func_t = void (*)(ImGuiInputTextCallbackData*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextCallbackData_SelectAll"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextCallbackData_SelectAll"));
             return func(self);
         }
         inline void ClearSelection(ImGuiInputTextCallbackData* self) {
@@ -5967,44 +6006,6 @@ namespace ImGui {
             return func(self);
         }
     }
-    namespace ImGuiTextFilterManger {
-    
-        inline ImGuiTextFilter* Craete(const char* default_filter) {
-            using func_t = ImGuiTextFilter* (*)(const char*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_ImGuiTextFilter"));
-            return func(default_filter);
-        }
-        inline void Destroy(ImGuiTextFilter* self) {
-            using func_t = void (*)(ImGuiTextFilter*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_destroy"));
-            return func(self);
-        }
-        inline bool Draw(ImGuiTextFilter* self, const char* label, float width) {
-            using func_t = bool (*)(ImGuiTextFilter*, const char*, float);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_Draw"));
-            return func(self, label, width);
-        }
-        inline bool PassFilter(ImGuiTextFilter* self, const char* text, const char* text_end) {
-            using func_t = bool (*)(ImGuiTextFilter*, const char*, const char*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_PassFilter"));
-            return func(self, text, text_end);
-        }
-        inline void Build(ImGuiTextFilter* self) {
-            using func_t = void (*)(ImGuiTextFilter*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_Build"));
-            return func(self);
-        }
-        inline void Clear(ImGuiTextFilter* self) {
-            using func_t = void (*)(ImGuiTextFilter*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_Clear"));
-            return func(self);
-        }
-        inline bool IsActive(ImGuiTextFilter* self) {
-            using func_t = bool (*)(ImGuiTextFilter*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextFilter_IsActive"));
-            return func(self);
-        }
-    }
 
     namespace ImGuiTextRangeManager {
         inline ImGuiTextRange* Create(void) {
@@ -6036,7 +6037,7 @@ namespace ImGui {
 
     namespace ImGuiTextBufferManager {
 
-            inline ImGuiTextBuffer* Create(void) {
+        inline ImGuiTextBuffer* Create(void) {
             using func_t = ImGuiTextBuffer* (*)();
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTextBuffer_ImGuiTextBuffer"));
             return func();
@@ -6097,7 +6098,8 @@ namespace ImGui {
     namespace ImGuiStoragePairManger {
         inline ImGuiStoragePair* Create(ImGuiID _key, int _val) {
             using func_t = ImGuiStoragePair* (*)(ImGuiID, int);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiStoragePair_ImGuiStoragePair_Int"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiStoragePair_ImGuiStoragePair_Int"));
             return func(_key, _val);
         }
         inline void Destroy(ImGuiStoragePair* self) {
@@ -6113,7 +6115,8 @@ namespace ImGui {
         }
         inline ImGuiStoragePair* Create(ImGuiID _key, void* _val) {
             using func_t = ImGuiStoragePair* (*)(ImGuiID, void*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiStoragePair_ImGuiStoragePair_Ptr"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiStoragePair_ImGuiStoragePair_Ptr"));
             return func(_key, _val);
         }
     }
@@ -6224,12 +6227,14 @@ namespace ImGui {
         }
         inline void IncludeItemByIndex(ImGuiListClipper* self, int item_index) {
             using func_t = void (*)(ImGuiListClipper*, int);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiListClipper_IncludeItemByIndex"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiListClipper_IncludeItemByIndex"));
             return func(self, item_index);
         }
         inline void IncludeItemsByIndex(ImGuiListClipper* self, int item_begin, int item_end) {
             using func_t = void (*)(ImGuiListClipper*, int, int);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiListClipper_IncludeItemsByIndex"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiListClipper_IncludeItemsByIndex"));
             return func(self, item_begin, item_end);
         }
     }
@@ -6294,11 +6299,12 @@ namespace ImGui {
             return func(self);
         }
     }
- 
+
     namespace ImDrawListSplitterManager {
         inline ImDrawListSplitter* Create(void) {
             using func_t = ImDrawListSplitter* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawListSplitter_ImDrawListSplitter"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawListSplitter_ImDrawListSplitter"));
             return func();
         }
         inline void Destroy(ImDrawListSplitter* self) {
@@ -6326,10 +6332,10 @@ namespace ImGui {
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawListSplitter_Merge"));
             return func(self, draw_list);
         }
-        inline void SetCurrentChannel(ImDrawListSplitter* self, ImDrawList* draw_list,
-                                                         int channel_idx) {
+        inline void SetCurrentChannel(ImDrawListSplitter* self, ImDrawList* draw_list, int channel_idx) {
             using func_t = void (*)(ImDrawListSplitter*, ImDrawList*, int);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawListSplitter_SetCurrentChannel"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawListSplitter_SetCurrentChannel"));
             return func(self, draw_list, channel_idx);
         }
     }
@@ -6347,7 +6353,7 @@ namespace ImGui {
             return func(self);
         }
         inline void PushClipRect(ImDrawList* self, const ImVec2 clip_rect_min, const ImVec2 clip_rect_max,
-                                            bool intersect_with_current_clip_rect) {
+                                 bool intersect_with_current_clip_rect) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, bool);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PushClipRect"));
             return func(self, clip_rect_min, clip_rect_max, intersect_with_current_clip_rect);
@@ -6388,112 +6394,110 @@ namespace ImGui {
             return func(self, p1, p2, col, thickness);
         }
         inline void AddRect(ImDrawList* self, const ImVec2 p_min, const ImVec2 p_max, ImU32 col, float rounding,
-                                       ImDrawFlags flags, float thickness) {
+                            ImDrawFlags flags, float thickness) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, ImU32, float, ImDrawFlags, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddRect"));
             return func(self, p_min, p_max, col, rounding, flags, thickness);
         }
-        inline void AddRectFilled(ImDrawList* self, const ImVec2 p_min, const ImVec2 p_max, ImU32 col,
-                                             float rounding, ImDrawFlags flags) {
+        inline void AddRectFilled(ImDrawList* self, const ImVec2 p_min, const ImVec2 p_max, ImU32 col, float rounding,
+                                  ImDrawFlags flags) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, ImU32, float, ImDrawFlags);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddRectFilled"));
             return func(self, p_min, p_max, col, rounding, flags);
         }
         inline void AddRectFilledMultiColor(ImDrawList* self, const ImVec2 p_min, const ImVec2 p_max,
-                                                       ImU32 col_upr_left, ImU32 col_upr_right, ImU32 col_bot_right,
-                                                       ImU32 col_bot_left) {
+                                            ImU32 col_upr_left, ImU32 col_upr_right, ImU32 col_bot_right,
+                                            ImU32 col_bot_left) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, ImU32, ImU32, ImU32, ImU32);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddRectFilledMultiColor"));
             return func(self, p_min, p_max, col_upr_left, col_upr_right, col_bot_right, col_bot_left);
         }
         inline void AddQuad(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3, const ImVec2 p4,
-                                       ImU32 col, float thickness) {
+                            ImU32 col, float thickness) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, const ImVec2, ImU32, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddQuad"));
             return func(self, p1, p2, p3, p4, col, thickness);
         }
-        inline void AddQuadFilled(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3,
-                                             const ImVec2 p4, ImU32 col) {
+        inline void AddQuadFilled(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3, const ImVec2 p4,
+                                  ImU32 col) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, const ImVec2, ImU32);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddQuadFilled"));
             return func(self, p1, p2, p3, p4, col);
         }
         inline void AddTriangle(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3, ImU32 col,
-                                           float thickness) {
+                                float thickness) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, ImU32, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddTriangle"));
             return func(self, p1, p2, p3, col, thickness);
         }
-        inline void AddTriangleFilled(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3,
-                                                 ImU32 col) {
+        inline void AddTriangleFilled(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3, ImU32 col) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, ImU32);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddTriangleFilled"));
             return func(self, p1, p2, p3, col);
         }
         inline void AddCircle(ImDrawList* self, const ImVec2 center, float radius, ImU32 col, int num_segments,
-                                         float thickness) {
+                              float thickness) {
             using func_t = void (*)(ImDrawList*, const ImVec2, float, ImU32, int, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddCircle"));
             return func(self, center, radius, col, num_segments, thickness);
         }
-        inline void AddCircleFilled(ImDrawList* self, const ImVec2 center, float radius, ImU32 col,
-                                               int num_segments) {
+        inline void AddCircleFilled(ImDrawList* self, const ImVec2 center, float radius, ImU32 col, int num_segments) {
             using func_t = void (*)(ImDrawList*, const ImVec2, float, ImU32, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddCircleFilled"));
             return func(self, center, radius, col, num_segments);
         }
         inline void AddNgon(ImDrawList* self, const ImVec2 center, float radius, ImU32 col, int num_segments,
-                                       float thickness) {
+                            float thickness) {
             using func_t = void (*)(ImDrawList*, const ImVec2, float, ImU32, int, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddNgon"));
             return func(self, center, radius, col, num_segments, thickness);
         }
-        inline void AddNgonFilled(ImDrawList* self, const ImVec2 center, float radius, ImU32 col,
-                                             int num_segments) {
+        inline void AddNgonFilled(ImDrawList* self, const ImVec2 center, float radius, ImU32 col, int num_segments) {
             using func_t = void (*)(ImDrawList*, const ImVec2, float, ImU32, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddNgonFilled"));
             return func(self, center, radius, col, num_segments);
         }
         inline void AddEllipse(ImDrawList* self, const ImVec2 center, const ImVec2 radius, ImU32 col, float rot,
-                                          int num_segments, float thickness) {
+                               int num_segments, float thickness) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, ImU32, float, int, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddEllipse"));
             return func(self, center, radius, col, rot, num_segments, thickness);
         }
-        inline void AddEllipseFilled(ImDrawList* self, const ImVec2 center, const ImVec2 radius, ImU32 col,
-                                                float rot, int num_segments) {
+        inline void AddEllipseFilled(ImDrawList* self, const ImVec2 center, const ImVec2 radius, ImU32 col, float rot,
+                                     int num_segments) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, ImU32, float, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddEllipseFilled"));
             return func(self, center, radius, col, rot, num_segments);
         }
         inline void AddText_Vec2(ImDrawList* self, const ImVec2 pos, ImU32 col, const char* text_begin,
-                                            const char* text_end) {
+                                 const char* text_end) {
             using func_t = void (*)(ImDrawList*, const ImVec2, ImU32, const char*, const char*);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddText_Vec2"));
             return func(self, pos, col, text_begin, text_end);
         }
-        inline void AddText_FontPtr(ImDrawList* self, const ImFont* font, float font_size, const ImVec2 pos,
-                                               ImU32 col, const char* text_begin, const char* text_end, float wrap_width,
-                                               const ImVec4* cpu_fine_clip_rect) {
-            using func_t = void (*)(ImDrawList*, const ImFont*, float, const ImVec2, ImU32, const char*, const char*, float,
-                                    const ImVec4*);
+        inline void AddText_FontPtr(ImDrawList* self, const ImFont* font, float font_size, const ImVec2 pos, ImU32 col,
+                                    const char* text_begin, const char* text_end, float wrap_width,
+                                    const ImVec4* cpu_fine_clip_rect) {
+            using func_t = void (*)(ImDrawList*, const ImFont*, float, const ImVec2, ImU32, const char*, const char*,
+                                    float, const ImVec4*);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddText_FontPtr"));
             return func(self, font, font_size, pos, col, text_begin, text_end, wrap_width, cpu_fine_clip_rect);
         }
-        inline void AddBezierCubic(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3,
-                                              const ImVec2 p4, ImU32 col, float thickness, int num_segments) {
-            using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, const ImVec2, ImU32, float, int);
+        inline void AddBezierCubic(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3, const ImVec2 p4,
+                                   ImU32 col, float thickness, int num_segments) {
+            using func_t =
+                void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, const ImVec2, ImU32, float, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddBezierCubic"));
             return func(self, p1, p2, p3, p4, col, thickness, num_segments);
         }
-        inline void AddBezierQuadratic(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3,
-                                                  ImU32 col, float thickness, int num_segments) {
+        inline void AddBezierQuadratic(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3, ImU32 col,
+                                       float thickness, int num_segments) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, ImU32, float, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddBezierQuadratic"));
             return func(self, p1, p2, p3, col, thickness, num_segments);
         }
-        inline void AddPolyline(ImDrawList* self, const ImVec2* points, int num_points, ImU32 col,
-                                           ImDrawFlags flags, float thickness) {
+        inline void AddPolyline(ImDrawList* self, const ImVec2* points, int num_points, ImU32 col, ImDrawFlags flags,
+                                float thickness) {
             using func_t = void (*)(ImDrawList*, const ImVec2*, int, ImU32, ImDrawFlags, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddPolyline"));
             return func(self, points, num_points, col, flags, thickness);
@@ -6508,26 +6512,26 @@ namespace ImGui {
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddConcavePolyFilled"));
             return func(self, points, num_points, col);
         }
-        inline void AddImage(ImDrawList* self, ImTextureID user_texture_id, const ImVec2 p_min,
-                                        const ImVec2 p_max, const ImVec2 uv_min, const ImVec2 uv_max, ImU32 col) {
+        inline void AddImage(ImDrawList* self, ImTextureID user_texture_id, const ImVec2 p_min, const ImVec2 p_max,
+                             const ImVec2 uv_min, const ImVec2 uv_max, ImU32 col) {
             using func_t =
                 void (*)(ImDrawList*, ImTextureID, const ImVec2, const ImVec2, const ImVec2, const ImVec2, ImU32);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddImage"));
             return func(self, user_texture_id, p_min, p_max, uv_min, uv_max, col);
         }
         inline void AddImageQuad(ImDrawList* self, ImTextureID user_texture_id, const ImVec2 p1, const ImVec2 p2,
-                                            const ImVec2 p3, const ImVec2 p4, const ImVec2 uv1, const ImVec2 uv2,
-                                            const ImVec2 uv3, const ImVec2 uv4, ImU32 col) {
+                                 const ImVec2 p3, const ImVec2 p4, const ImVec2 uv1, const ImVec2 uv2, const ImVec2 uv3,
+                                 const ImVec2 uv4, ImU32 col) {
             using func_t = void (*)(ImDrawList*, ImTextureID, const ImVec2, const ImVec2, const ImVec2, const ImVec2,
                                     const ImVec2, const ImVec2, const ImVec2, const ImVec2, ImU32);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddImageQuad"));
             return func(self, user_texture_id, p1, p2, p3, p4, uv1, uv2, uv3, uv4, col);
         }
         inline void AddImageRounded(ImDrawList* self, ImTextureID user_texture_id, const ImVec2 p_min,
-                                               const ImVec2 p_max, const ImVec2 uv_min, const ImVec2 uv_max, ImU32 col,
-                                               float rounding, ImDrawFlags flags) {
-            using func_t = void (*)(ImDrawList*, ImTextureID, const ImVec2, const ImVec2, const ImVec2, const ImVec2, ImU32,
-                                    float, ImDrawFlags);
+                                    const ImVec2 p_max, const ImVec2 uv_min, const ImVec2 uv_max, ImU32 col,
+                                    float rounding, ImDrawFlags flags) {
+            using func_t = void (*)(ImDrawList*, ImTextureID, const ImVec2, const ImVec2, const ImVec2, const ImVec2,
+                                    ImU32, float, ImDrawFlags);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_AddImageRounded"));
             return func(self, user_texture_id, p_min, p_max, uv_min, uv_max, col, rounding, flags);
         }
@@ -6543,7 +6547,8 @@ namespace ImGui {
         }
         inline void PathLineToMergeDuplicate(ImDrawList* self, const ImVec2 pos) {
             using func_t = void (*)(ImDrawList*, const ImVec2);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PathLineToMergeDuplicate"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PathLineToMergeDuplicate"));
             return func(self, pos);
         }
         inline void PathFillConvex(ImDrawList* self, ImU32 col) {
@@ -6562,37 +6567,37 @@ namespace ImGui {
             return func(self, col, flags, thickness);
         }
         inline void PathArcTo(ImDrawList* self, const ImVec2 center, float radius, float a_min, float a_max,
-                                         int num_segments) {
+                              int num_segments) {
             using func_t = void (*)(ImDrawList*, const ImVec2, float, float, float, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PathArcTo"));
             return func(self, center, radius, a_min, a_max, num_segments);
         }
         inline void PathArcToFast(ImDrawList* self, const ImVec2 center, float radius, int a_min_of_12,
-                                             int a_max_of_12) {
+                                  int a_max_of_12) {
             using func_t = void (*)(ImDrawList*, const ImVec2, float, int, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PathArcToFast"));
             return func(self, center, radius, a_min_of_12, a_max_of_12);
         }
         inline void PathEllipticalArcTo(ImDrawList* self, const ImVec2 center, const ImVec2 radius, float rot,
-                                                   float a_min, float a_max, int num_segments) {
+                                        float a_min, float a_max, int num_segments) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, float, float, float, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PathEllipticalArcTo"));
             return func(self, center, radius, rot, a_min, a_max, num_segments);
         }
         inline void PathBezierCubicCurveTo(ImDrawList* self, const ImVec2 p2, const ImVec2 p3, const ImVec2 p4,
-                                                      int num_segments) {
+                                           int num_segments) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PathBezierCubicCurveTo"));
             return func(self, p2, p3, p4, num_segments);
         }
-        inline void PathBezierQuadraticCurveTo(ImDrawList* self, const ImVec2 p2, const ImVec2 p3,
-                                                          int num_segments) {
+        inline void PathBezierQuadraticCurveTo(ImDrawList* self, const ImVec2 p2, const ImVec2 p3, int num_segments) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, int);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PathBezierQuadraticCurveTo"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PathBezierQuadraticCurveTo"));
             return func(self, p2, p3, num_segments);
         }
         inline void PathRect(ImDrawList* self, const ImVec2 rect_min, const ImVec2 rect_max, float rounding,
-                                        ImDrawFlags flags) {
+                             ImDrawFlags flags) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, float, ImDrawFlags);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PathRect"));
             return func(self, rect_min, rect_max, rounding, flags);
@@ -6642,15 +6647,14 @@ namespace ImGui {
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PrimRect"));
             return func(self, a, b, col);
         }
-        inline void PrimRectUV(ImDrawList* self, const ImVec2 a, const ImVec2 b, const ImVec2 uv_a,
-                                          const ImVec2 uv_b, ImU32 col) {
+        inline void PrimRectUV(ImDrawList* self, const ImVec2 a, const ImVec2 b, const ImVec2 uv_a, const ImVec2 uv_b,
+                               ImU32 col) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, const ImVec2, ImU32);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PrimRectUV"));
             return func(self, a, b, uv_a, uv_b, col);
         }
         inline void PrimQuadUV(ImDrawList* self, const ImVec2 a, const ImVec2 b, const ImVec2 c, const ImVec2 d,
-                                          const ImVec2 uv_a, const ImVec2 uv_b, const ImVec2 uv_c, const ImVec2 uv_d,
-                                          ImU32 col) {
+                               const ImVec2 uv_a, const ImVec2 uv_b, const ImVec2 uv_c, const ImVec2 uv_d, ImU32 col) {
             using func_t = void (*)(ImDrawList*, const ImVec2, const ImVec2, const ImVec2, const ImVec2, const ImVec2,
                                     const ImVec2, const ImVec2, const ImVec2, ImU32);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList_PrimQuadUV"));
@@ -6708,17 +6712,18 @@ namespace ImGui {
         }
         inline int _CalcCircleAutoSegmentCount(ImDrawList* self, float radius) {
             using func_t = int (*)(ImDrawList*, float);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList__CalcCircleAutoSegmentCount"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList__CalcCircleAutoSegmentCount"));
             return func(self, radius);
         }
         inline void _PathArcToFastEx(ImDrawList* self, const ImVec2 center, float radius, int a_min_sample,
-                                                int a_max_sample, int a_step) {
+                                     int a_max_sample, int a_step) {
             using func_t = void (*)(ImDrawList*, const ImVec2, float, int, int, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList__PathArcToFastEx"));
             return func(self, center, radius, a_min_sample, a_max_sample, a_step);
         }
         inline void _PathArcToN(ImDrawList* self, const ImVec2 center, float radius, float a_min, float a_max,
-                                           int num_segments) {
+                                int num_segments) {
             using func_t = void (*)(ImDrawList*, const ImVec2, float, float, float, int);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawList__PathArcToN"));
             return func(self, center, radius, a_min, a_max, num_segments);
@@ -6778,8 +6783,8 @@ namespace ImGui {
 
         inline ImFontGlyphRangesBuilder* Create(void) {
             using func_t = ImFontGlyphRangesBuilder* (*)();
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontGlyphRangesBuilder_ImFontGlyphRangesBuilder"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImFontGlyphRangesBuilder_ImFontGlyphRangesBuilder"));
             return func();
         }
         inline void Destroy(ImFontGlyphRangesBuilder* self) {
@@ -6807,8 +6812,7 @@ namespace ImGui {
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontGlyphRangesBuilder_AddChar"));
             return func(self, c);
         }
-        inline void AddText(ImFontGlyphRangesBuilder* self, const char* text,
-                                                     const char* text_end) {
+        inline void AddText(ImFontGlyphRangesBuilder* self, const char* text, const char* text_end) {
             using func_t = void (*)(ImFontGlyphRangesBuilder*, const char*, const char*);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontGlyphRangesBuilder_AddText"));
             return func(self, text, text_end);
@@ -6820,7 +6824,8 @@ namespace ImGui {
         }
         inline void BuildRanges(ImFontGlyphRangesBuilder* self, ImVector_ImWchar* out_ranges) {
             using func_t = void (*)(ImFontGlyphRangesBuilder*, ImVector_ImWchar*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontGlyphRangesBuilder_BuildRanges"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontGlyphRangesBuilder_BuildRanges"));
             return func(self, out_ranges);
         }
     }
@@ -6866,34 +6871,31 @@ namespace ImGui {
             return func(self, font_cfg);
         }
         inline ImFont* AddFontFromFileTTF(ImFontAtlas* self, const char* filename, float size_pixels,
-                                                      const ImFontConfig* font_cfg, const ImWchar* glyph_ranges) {
+                                          const ImFontConfig* font_cfg, const ImWchar* glyph_ranges) {
             using func_t = ImFont* (*)(ImFontAtlas*, const char*, float, const ImFontConfig*, const ImWchar*);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_AddFontFromFileTTF"));
             return func(self, filename, size_pixels, font_cfg, glyph_ranges);
         }
-        inline ImFont* AddFontFromMemoryTTF(ImFontAtlas* self, void* font_data, int font_data_size,
-                                                        float size_pixels, const ImFontConfig* font_cfg,
-                                                        const ImWchar* glyph_ranges) {
+        inline ImFont* AddFontFromMemoryTTF(ImFontAtlas* self, void* font_data, int font_data_size, float size_pixels,
+                                            const ImFontConfig* font_cfg, const ImWchar* glyph_ranges) {
             using func_t = ImFont* (*)(ImFontAtlas*, void*, int, float, const ImFontConfig*, const ImWchar*);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_AddFontFromMemoryTTF"));
             return func(self, font_data, font_data_size, size_pixels, font_cfg, glyph_ranges);
         }
         inline ImFont* AddFontFromMemoryCompressedTTF(ImFontAtlas* self, const void* compressed_font_data,
-                                                                  int compressed_font_data_size, float size_pixels,
-                                                                  const ImFontConfig* font_cfg,
-                                                                  const ImWchar* glyph_ranges) {
+                                                      int compressed_font_data_size, float size_pixels,
+                                                      const ImFontConfig* font_cfg, const ImWchar* glyph_ranges) {
             using func_t = ImFont* (*)(ImFontAtlas*, const void*, int, float, const ImFontConfig*, const ImWchar*);
             func_t func =
                 reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_AddFontFromMemoryCompressedTTF"));
             return func(self, compressed_font_data, compressed_font_data_size, size_pixels, font_cfg, glyph_ranges);
         }
-        inline ImFont* AddFontFromMemoryCompressedBase85TTF(ImFontAtlas* self,
-                                                                        const char* compressed_font_data_base85,
-                                                                        float size_pixels, const ImFontConfig* font_cfg,
-                                                                        const ImWchar* glyph_ranges) {
+        inline ImFont* AddFontFromMemoryCompressedBase85TTF(ImFontAtlas* self, const char* compressed_font_data_base85,
+                                                            float size_pixels, const ImFontConfig* font_cfg,
+                                                            const ImWchar* glyph_ranges) {
             using func_t = ImFont* (*)(ImFontAtlas*, const char*, float, const ImFontConfig*, const ImWchar*);
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_AddFontFromMemoryCompressedBase85TTF"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImFontAtlas_AddFontFromMemoryCompressedBase85TTF"));
             return func(self, compressed_font_data_base85, size_pixels, font_cfg, glyph_ranges);
         }
         inline void ClearInputData(ImFontAtlas* self) {
@@ -6921,14 +6923,14 @@ namespace ImGui {
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_Build"));
             return func(self);
         }
-        inline void GetTexDataAsAlpha8(ImFontAtlas* self, unsigned char** out_pixels, int* out_width,
-                                                   int* out_height, int* out_bytes_per_pixel) {
+        inline void GetTexDataAsAlpha8(ImFontAtlas* self, unsigned char** out_pixels, int* out_width, int* out_height,
+                                       int* out_bytes_per_pixel) {
             using func_t = void (*)(ImFontAtlas*, unsigned char**, int*, int*, int*);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_GetTexDataAsAlpha8"));
             return func(self, out_pixels, out_width, out_height, out_bytes_per_pixel);
         }
-        inline void GetTexDataAsRGBA32(ImFontAtlas* self, unsigned char** out_pixels, int* out_width,
-                                                   int* out_height, int* out_bytes_per_pixel) {
+        inline void GetTexDataAsRGBA32(ImFontAtlas* self, unsigned char** out_pixels, int* out_width, int* out_height,
+                                       int* out_bytes_per_pixel) {
             using func_t = void (*)(ImFontAtlas*, unsigned char**, int*, int*, int*);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_GetTexDataAsRGBA32"));
             return func(self, out_pixels, out_width, out_height, out_bytes_per_pixel);
@@ -6965,7 +6967,8 @@ namespace ImGui {
         }
         inline const ImWchar* GetGlyphRangesChineseFull(ImFontAtlas* self) {
             using func_t = const ImWchar* (*)(ImFontAtlas*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_GetGlyphRangesChineseFull"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_GetGlyphRangesChineseFull"));
             return func(self);
         }
         inline const ImWchar* GetGlyphRangesChineseSimplifiedCommon(ImFontAtlas* self) {
@@ -6986,7 +6989,8 @@ namespace ImGui {
         }
         inline const ImWchar* GetGlyphRangesVietnamese(ImFontAtlas* self) {
             using func_t = const ImWchar* (*)(ImFontAtlas*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_GetGlyphRangesVietnamese"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_GetGlyphRangesVietnamese"));
             return func(self);
         }
         inline int AddCustomRectRegular(ImFontAtlas* self, int width, int height) {
@@ -6995,7 +6999,7 @@ namespace ImGui {
             return func(self, width, height);
         }
         inline int AddCustomRectFontGlyph(ImFontAtlas* self, ImFont* font, ImWchar id, int width, int height,
-                                                      float advance_x, const ImVec2 offset) {
+                                          float advance_x, const ImVec2 offset) {
             using func_t = int (*)(ImFontAtlas*, ImFont*, ImWchar, int, int, float, const ImVec2);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_AddCustomRectFontGlyph"));
             return func(self, font, id, width, height, advance_x, offset);
@@ -7006,13 +7010,13 @@ namespace ImGui {
             return func(self, index);
         }
         inline void CalcCustomRectUV(ImFontAtlas* self, const ImFontAtlasCustomRect* rect, ImVec2* out_uv_min,
-                                                 ImVec2* out_uv_max) {
+                                     ImVec2* out_uv_max) {
             using func_t = void (*)(ImFontAtlas*, const ImFontAtlasCustomRect*, ImVec2*, ImVec2*);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_CalcCustomRectUV"));
             return func(self, rect, out_uv_min, out_uv_max);
         }
         inline bool GetMouseCursorTexData(ImFontAtlas* self, ImGuiMouseCursor cursor, ImVec2* out_offset,
-                                                      ImVec2* out_size, ImVec2 out_uv_border[2], ImVec2 out_uv_fill[2]) {
+                                          ImVec2* out_size, ImVec2 out_uv_border[2], ImVec2 out_uv_fill[2]) {
             using func_t = bool (*)(ImFontAtlas*, ImGuiMouseCursor, ImVec2*, ImVec2*, ImVec2[2], ImVec2[2]);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFontAtlas_GetMouseCursorTexData"));
             return func(self, cursor, out_offset, out_size, out_uv_border, out_uv_fill);
@@ -7056,26 +7060,26 @@ namespace ImGui {
             return func(self);
         }
         inline void CalcTextSizeA(ImVec2* pOut, ImFont* self, float size, float max_width, float wrap_width,
-                                         const char* text_begin, const char* text_end, const char** remaining) {
+                                  const char* text_begin, const char* text_end, const char** remaining) {
             using func_t = void (*)(ImVec2*, ImFont*, float, float, float, const char*, const char*, const char**);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFont_CalcTextSizeA"));
             return func(pOut, self, size, max_width, wrap_width, text_begin, text_end, remaining);
         }
         inline const char* CalcWordWrapPositionA(ImFont* self, float scale, const char* text, const char* text_end,
-                                                        float wrap_width) {
+                                                 float wrap_width) {
             using func_t = const char* (*)(ImFont*, float, const char*, const char*, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFont_CalcWordWrapPositionA"));
             return func(self, scale, text, text_end, wrap_width);
         }
         inline void RenderChar(ImFont* self, ImDrawList* draw_list, float size, const ImVec2 pos, ImU32 col,
-                                      ImWchar c) {
+                               ImWchar c) {
             using func_t = void (*)(ImFont*, ImDrawList*, float, const ImVec2, ImU32, ImWchar);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFont_RenderChar"));
             return func(self, draw_list, size, pos, col, c);
         }
         inline void RenderText(ImFont* self, ImDrawList* draw_list, float size, const ImVec2 pos, ImU32 col,
-                                      const ImVec4 clip_rect, const char* text_begin, const char* text_end,
-                                      float wrap_width, bool cpu_fine_clip) {
+                               const ImVec4 clip_rect, const char* text_begin, const char* text_end, float wrap_width,
+                               bool cpu_fine_clip) {
             using func_t = void (*)(ImFont*, ImDrawList*, float, const ImVec2, ImU32, const ImVec4, const char*,
                                     const char*, float, bool);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFont_RenderText"));
@@ -7097,9 +7101,9 @@ namespace ImGui {
             return func(self, new_size);
         }
         inline void AddGlyph(ImFont* self, const ImFontConfig* src_cfg, ImWchar c, float x0, float y0, float x1,
-                                    float y1, float u0, float v0, float u1, float v1, float advance_x) {
-            using func_t = void (*)(ImFont*, const ImFontConfig*, ImWchar, float, float, float, float, float, float, float,
-                                    float, float);
+                             float y1, float u0, float v0, float u1, float v1, float advance_x) {
+            using func_t = void (*)(ImFont*, const ImFontConfig*, ImWchar, float, float, float, float, float, float,
+                                    float, float, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImFont_AddGlyph"));
             return func(self, src_cfg, c, x0, y0, x1, y1, u0, v0, u1, v1, advance_x);
         }
@@ -7121,7 +7125,7 @@ namespace ImGui {
     }
 
     namespace ImGuiViewportManager {
-   
+
         inline ImGuiViewport* Create(void) {
             using func_t = ImGuiViewport* (*)();
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiViewport_ImGuiViewport"));
@@ -7199,8 +7203,7 @@ namespace ImGui {
     }
     inline void ImQsort(void* base, size_t count, size_t size_of_element,
                         int (*compare_func)(void const*, void const*)) {
-        using func_t =
-            void (*)(void*, size_t, size_t, int (*)(void const*, void const*));
+        using func_t = void (*)(void*, size_t, size_t, int (*)(void const*, void const*));
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igImQsort"));
         return func(base, count, size_of_element, compare_func);
     }
@@ -7585,7 +7588,8 @@ namespace ImGui {
     }
     inline bool ImIsFloatAboveGuaranteedIntegerPrecision(float f) {
         using func_t = bool (*)(float);
-        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igImIsFloatAboveGuaranteedIntegerPrecision"));
+        func_t func =
+            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igImIsFloatAboveGuaranteedIntegerPrecision"));
         return func(f);
     }
     inline float ImExponentialMovingAverage(float avg, float sample, int n) {
@@ -7924,7 +7928,8 @@ namespace ImGui {
     namespace ImDrawListSharedDataManager {
         inline ImDrawListSharedData* Create(void) {
             using func_t = ImDrawListSharedData* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawListSharedData_ImDrawListSharedData"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawListSharedData_ImDrawListSharedData"));
             return func();
         }
         inline void Destroy(ImDrawListSharedData* self) {
@@ -7934,15 +7939,16 @@ namespace ImGui {
         }
         inline void SetCircleTessellationMaxError(ImDrawListSharedData* self, float max_error) {
             using func_t = void (*)(ImDrawListSharedData*, float);
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawListSharedData_SetCircleTessellationMaxError"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImDrawListSharedData_SetCircleTessellationMaxError"));
             return func(self, max_error);
         }
     }
     namespace ImDrawDataBuilderManager {
         inline ImDrawDataBuilder* Create(void) {
             using func_t = ImDrawDataBuilder* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawDataBuilder_ImDrawDataBuilder"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImDrawDataBuilder_ImDrawDataBuilder"));
             return func();
         }
         inline void Destroy(ImDrawDataBuilder* self) {
@@ -8015,15 +8021,15 @@ namespace ImGui {
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiMenuColumns_Update"));
             return func(self, spacing, window_reappearing);
         }
-        inline float DeclColumns(ImGuiMenuColumns* self, float w_icon, float w_label, float w_shortcut,
-                                                  float w_mark) {
+        inline float DeclColumns(ImGuiMenuColumns* self, float w_icon, float w_label, float w_shortcut, float w_mark) {
             using func_t = float (*)(ImGuiMenuColumns*, float, float, float, float);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiMenuColumns_DeclColumns"));
             return func(self, w_icon, w_label, w_shortcut, w_mark);
         }
         inline void CalcNextTotalWidth(ImGuiMenuColumns* self, bool update_offsets) {
             using func_t = void (*)(ImGuiMenuColumns*, bool);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiMenuColumns_CalcNextTotalWidth"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiMenuColumns_CalcNextTotalWidth"));
             return func(self, update_offsets);
         }
     }
@@ -8037,7 +8043,8 @@ namespace ImGui {
         }
         inline void Destroy(ImGuiInputTextDeactivatedState* self) {
             using func_t = void (*)(ImGuiInputTextDeactivatedState*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextDeactivatedState_destroy"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextDeactivatedState_destroy"));
             return func(self);
         }
     }
@@ -8046,8 +8053,8 @@ namespace ImGui {
 
         inline void ClearFreeMemory(ImGuiInputTextDeactivatedState* self) {
             using func_t = void (*)(ImGuiInputTextDeactivatedState*);
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextDeactivatedState_ClearFreeMemory"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImGuiInputTextDeactivatedState_ClearFreeMemory"));
             return func(self);
         }
     }
@@ -8056,7 +8063,8 @@ namespace ImGui {
 
         inline ImGuiInputTextState* Create(void) {
             using func_t = ImGuiInputTextState* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_ImGuiInputTextState"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_ImGuiInputTextState"));
             return func();
         }
         inline void Destroy(ImGuiInputTextState* self) {
@@ -8071,17 +8079,20 @@ namespace ImGui {
         }
         inline void ClearFreeMemory(ImGuiInputTextState* self) {
             using func_t = void (*)(ImGuiInputTextState*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_ClearFreeMemory"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_ClearFreeMemory"));
             return func(self);
         }
         inline int GetUndoAvailCount(ImGuiInputTextState* self) {
             using func_t = int (*)(ImGuiInputTextState*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_GetUndoAvailCount"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_GetUndoAvailCount"));
             return func(self);
         }
         inline int GetRedoAvailCount(ImGuiInputTextState* self) {
             using func_t = int (*)(ImGuiInputTextState*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_GetRedoAvailCount"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_GetRedoAvailCount"));
             return func(self);
         }
         inline void OnKeyPressed(ImGuiInputTextState* self, int key) {
@@ -8091,7 +8102,8 @@ namespace ImGui {
         }
         inline void CursorAnimReset(ImGuiInputTextState* self) {
             using func_t = void (*)(ImGuiInputTextState*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_CursorAnimReset"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_CursorAnimReset"));
             return func(self);
         }
         inline void CursorClamp(ImGuiInputTextState* self) {
@@ -8116,12 +8128,14 @@ namespace ImGui {
         }
         inline int GetSelectionStart(ImGuiInputTextState* self) {
             using func_t = int (*)(ImGuiInputTextState*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_GetSelectionStart"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_GetSelectionStart"));
             return func(self);
         }
         inline int GetSelectionEnd(ImGuiInputTextState* self) {
             using func_t = int (*)(ImGuiInputTextState*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_GetSelectionEnd"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_GetSelectionEnd"));
             return func(self);
         }
         inline void SelectAll(ImGuiInputTextState* self) {
@@ -8131,20 +8145,20 @@ namespace ImGui {
         }
         inline void ReloadUserBufAndSelectAll(ImGuiInputTextState* self) {
             using func_t = void (*)(ImGuiInputTextState*);
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_ReloadUserBufAndSelectAll"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImGuiInputTextState_ReloadUserBufAndSelectAll"));
             return func(self);
         }
         inline void ReloadUserBufAndKeepSelection(ImGuiInputTextState* self) {
             using func_t = void (*)(ImGuiInputTextState*);
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_ReloadUserBufAndKeepSelection"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImGuiInputTextState_ReloadUserBufAndKeepSelection"));
             return func(self);
         }
         inline void ReloadUserBufAndMoveToEnd(ImGuiInputTextState* self) {
             using func_t = void (*)(ImGuiInputTextState*);
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiInputTextState_ReloadUserBufAndMoveToEnd"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImGuiInputTextState_ReloadUserBufAndMoveToEnd"));
             return func(self);
         }
 
@@ -8172,7 +8186,8 @@ namespace ImGui {
     namespace ImGuiNextItemDataManager {
         inline ImGuiNextItemData* Create(void) {
             using func_t = ImGuiNextItemData* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiNextItemData_ImGuiNextItemData"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiNextItemData_ImGuiNextItemData"));
             return func();
         }
         inline void Destroy(ImGuiNextItemData* self) {
@@ -8191,7 +8206,8 @@ namespace ImGui {
 
         inline ImGuiLastItemData* Create(void) {
             using func_t = ImGuiLastItemData* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiLastItemData_ImGuiLastItemData"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiLastItemData_ImGuiLastItemData"));
             return func();
         }
 
@@ -8221,7 +8237,8 @@ namespace ImGui {
         }
         inline void CompareWithContextState(ImGuiStackSizes* self, ImGuiContext* ctx) {
             using func_t = void (*)(ImGuiStackSizes*, ImGuiContext*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiStackSizes_CompareWithContextState"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiStackSizes_CompareWithContextState"));
             return func(self, ctx);
         }
     }
@@ -8229,7 +8246,8 @@ namespace ImGui {
     namespace ImGuiPtrOrIndexManager {
         inline ImGuiPtrOrIndex* Create(void* ptr) {
             using func_t = ImGuiPtrOrIndex* (*)(void*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiPtrOrIndex_ImGuiPtrOrIndex_Ptr"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiPtrOrIndex_ImGuiPtrOrIndex_Ptr"));
             return func(ptr);
         }
         inline void Destroy(ImGuiPtrOrIndex* self) {
@@ -8239,7 +8257,8 @@ namespace ImGui {
         }
         inline ImGuiPtrOrIndex* Create(int index) {
             using func_t = ImGuiPtrOrIndex* (*)(int);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiPtrOrIndex_ImGuiPtrOrIndex_Int"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiPtrOrIndex_ImGuiPtrOrIndex_Int"));
             return func(index);
         }
     }
@@ -8258,7 +8277,7 @@ namespace ImGui {
         }
     }
 
-    namespace ImGuiInputEventManager{
+    namespace ImGuiInputEventManager {
 
         inline ImGuiInputEvent* Create(void) {
             using func_t = ImGuiInputEvent* (*)();
@@ -8276,7 +8295,8 @@ namespace ImGui {
 
         inline ImGuiKeyRoutingData* Create(void) {
             using func_t = ImGuiKeyRoutingData* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiKeyRoutingData_ImGuiKeyRoutingData"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiKeyRoutingData_ImGuiKeyRoutingData"));
             return func();
         }
         inline void Destroy(ImGuiKeyRoutingData* self) {
@@ -8307,7 +8327,8 @@ namespace ImGui {
     namespace ImGuiKeyOwnerDataManager {
         inline ImGuiKeyOwnerData* Create(void) {
             using func_t = ImGuiKeyOwnerData* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiKeyOwnerData_ImGuiKeyOwnerData"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiKeyOwnerData_ImGuiKeyOwnerData"));
             return func();
         }
         inline void Destroy(ImGuiKeyOwnerData* self) {
@@ -8324,7 +8345,8 @@ namespace ImGui {
         }
         inline ImGuiListClipperRange FromPositions(float y1, float y2, int off_min, int off_max) {
             using func_t = ImGuiListClipperRange (*)(float, float, int, int);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiListClipperRange_FromPositions"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiListClipperRange_FromPositions"));
             return func(y1, y2, off_min, off_max);
         }
     }
@@ -8332,7 +8354,8 @@ namespace ImGui {
 
         inline ImGuiListClipperData* Create(void) {
             using func_t = ImGuiListClipperData* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiListClipperData_ImGuiListClipperData"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiListClipperData_ImGuiListClipperData"));
             return func();
         }
         inline void Destroy(ImGuiListClipperData* self) {
@@ -8367,8 +8390,8 @@ namespace ImGui {
     namespace ImGuiTypingSelectStateManager {
         inline ImGuiTypingSelectState* Create(void) {
             using func_t = ImGuiTypingSelectState* (*)();
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTypingSelectState_ImGuiTypingSelectState"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImGuiTypingSelectState_ImGuiTypingSelectState"));
             return func();
         }
         inline void Destroy(ImGuiTypingSelectState* self) {
@@ -8385,7 +8408,8 @@ namespace ImGui {
     namespace ImGuiOldColumnDataManager {
         inline ImGuiOldColumnData* Create(void) {
             using func_t = ImGuiOldColumnData* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiOldColumnData_ImGuiOldColumnData"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiOldColumnData_ImGuiOldColumnData"));
             return func();
         }
         inline void Destroy(ImGuiOldColumnData* self) {
@@ -8495,7 +8519,7 @@ namespace ImGui {
             return func(self);
         }
     }
-    namespace ImGuiViewportPManager{
+    namespace ImGuiViewportPManager {
 
         inline ImGuiViewportP* Create(void) {
             using func_t = ImGuiViewportP* (*)();
@@ -8517,8 +8541,7 @@ namespace ImGui {
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiViewportP_CalcWorkRectPos"));
             return func(pOut, self, off_min);
         }
-        inline void CalcWorkRectSize(ImVec2* pOut, ImGuiViewportP* self, const ImVec2 off_min,
-                                                    const ImVec2 off_max) {
+        inline void CalcWorkRectSize(ImVec2* pOut, ImGuiViewportP* self, const ImVec2 off_min, const ImVec2 off_max) {
             using func_t = void (*)(ImVec2*, ImGuiViewportP*, const ImVec2, const ImVec2);
             func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiViewportP_CalcWorkRectSize"));
             return func(pOut, self, off_min, off_max);
@@ -8544,11 +8567,12 @@ namespace ImGui {
             return func(pOut, self);
         }
     }
-    namespace ImGuiWindowSettingsManager{
+    namespace ImGuiWindowSettingsManager {
 
         inline ImGuiWindowSettings* Create(void) {
             using func_t = ImGuiWindowSettings* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiWindowSettings_ImGuiWindowSettings"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiWindowSettings_ImGuiWindowSettings"));
             return func();
         }
         inline void Destroy(ImGuiWindowSettings* self) {
@@ -8566,7 +8590,8 @@ namespace ImGui {
 
         inline ImGuiSettingsHandler* Create(void) {
             using func_t = ImGuiSettingsHandler* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiSettingsHandler_ImGuiSettingsHandler"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiSettingsHandler_ImGuiSettingsHandler"));
             return func();
         }
         inline void Destroy(ImGuiSettingsHandler* self) {
@@ -8579,7 +8604,8 @@ namespace ImGui {
 
         inline ImGuiDebugAllocInfo* Create(void) {
             using func_t = ImGuiDebugAllocInfo* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiDebugAllocInfo_ImGuiDebugAllocInfo"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiDebugAllocInfo_ImGuiDebugAllocInfo"));
             return func();
         }
         inline void Destroy(ImGuiDebugAllocInfo* self) {
@@ -8592,7 +8618,8 @@ namespace ImGui {
 
         inline ImGuiStackLevelInfo* Create(void) {
             using func_t = ImGuiStackLevelInfo* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiStackLevelInfo_ImGuiStackLevelInfo"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiStackLevelInfo_ImGuiStackLevelInfo"));
             return func();
         }
         inline void Destroy(ImGuiStackLevelInfo* self) {
@@ -8732,8 +8759,8 @@ namespace ImGui {
     namespace ImGuiTableInstanceDataManager {
         inline ImGuiTableInstanceData* Create(void) {
             using func_t = ImGuiTableInstanceData* (*)();
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableInstanceData_ImGuiTableInstanceData"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImGuiTableInstanceData_ImGuiTableInstanceData"));
             return func();
         }
         inline void Destroy(ImGuiTableInstanceData* self) {
@@ -8757,7 +8784,8 @@ namespace ImGui {
     namespace ImGuiTableTempDataManager {
         inline ImGuiTableTempData* Create(void) {
             using func_t = ImGuiTableTempData* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableTempData_ImGuiTableTempData"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableTempData_ImGuiTableTempData"));
             return func();
         }
         inline void Destroy(ImGuiTableTempData* self) {
@@ -8769,8 +8797,8 @@ namespace ImGui {
     namespace ImGuiTableColumnSettingsManager {
         inline ImGuiTableColumnSettings* Create(void) {
             using func_t = ImGuiTableColumnSettings* (*)();
-            func_t func =
-                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableColumnSettings_ImGuiTableColumnSettings"));
+            func_t func = reinterpret_cast<func_t>(
+                GetProcAddress(menuFramework, "ImGuiTableColumnSettings_ImGuiTableColumnSettings"));
             return func();
         }
         inline void Destroy(ImGuiTableColumnSettings* self) {
@@ -8782,7 +8810,8 @@ namespace ImGui {
     namespace ImGuiTableSettingsManager {
         inline ImGuiTableSettings* Create(void) {
             using func_t = ImGuiTableSettings* (*)();
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableSettings_ImGuiTableSettings"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableSettings_ImGuiTableSettings"));
             return func();
         }
         inline void Destroy(ImGuiTableSettings* self) {
@@ -8792,7 +8821,8 @@ namespace ImGui {
         }
         inline ImGuiTableColumnSettings* GetColumnSettings(ImGuiTableSettings* self) {
             using func_t = ImGuiTableColumnSettings* (*)(ImGuiTableSettings*);
-            func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableSettings_GetColumnSettings"));
+            func_t func =
+                reinterpret_cast<func_t>(GetProcAddress(menuFramework, "ImGuiTableSettings_GetColumnSettings"));
             return func(self);
         }
     }
@@ -9490,7 +9520,8 @@ namespace ImGui {
     }
     inline void NavMoveRequestResolveWithPastTreeNode(ImGuiNavItemData* result, ImGuiNavTreeNodeData* tree_node_data) {
         using func_t = void (*)(ImGuiNavItemData*, ImGuiNavTreeNodeData*);
-        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igNavMoveRequestResolveWithPastTreeNode"));
+        func_t func =
+            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igNavMoveRequestResolveWithPastTreeNode"));
         return func(result, tree_node_data);
     }
     inline void NavMoveRequestCancel() {
@@ -9525,7 +9556,8 @@ namespace ImGui {
     }
     inline void NavUpdateCurrentWindowIsScrollPushableX() {
         using func_t = void (*)();
-        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igNavUpdateCurrentWindowIsScrollPushableX"));
+        func_t func =
+            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igNavUpdateCurrentWindowIsScrollPushableX"));
         return func();
     }
     inline void SetNavWindow(ImGuiWindow* window) {
@@ -10024,7 +10056,7 @@ namespace ImGui {
     inline int TypingSelectFindNextSingleCharMatch(ImGuiTypingSelectRequest* req, int items_count,
                                                    const char* (*get_item_name_func)(void*, int), void* user_data,
                                                    int nav_item_idx) {
-        using func_t = int (*)(ImGuiTypingSelectRequest*, int, const char* (*)(void*, int),void*, int);
+        using func_t = int (*)(ImGuiTypingSelectRequest*, int, const char* (*)(void*, int), void*, int);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igTypingSelectFindNextSingleCharMatch"));
         return func(req, items_count, get_item_name_func, user_data, nav_item_idx);
     }
@@ -10294,13 +10326,14 @@ namespace ImGui {
     }
     inline void TableGcCompactTransientBuffers(ImGuiTable* table) {
         using func_t = void (*)(ImGuiTable*);
-        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igTableGcCompactTransientBuffers_TablePtr"));
+        func_t func =
+            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igTableGcCompactTransientBuffers_TablePtr"));
         return func(table);
     }
     inline void TableGcCompactTransientBuffers(ImGuiTableTempData* table) {
         using func_t = void (*)(ImGuiTableTempData*);
-        func_t func =
-            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igTableGcCompactTransientBuffers_TableTempDataPtr"));
+        func_t func = reinterpret_cast<func_t>(
+            GetProcAddress(menuFramework, "igTableGcCompactTransientBuffers_TableTempDataPtr"));
         return func(table);
     }
     inline void TableGcCompactSettings() {
@@ -10365,8 +10398,8 @@ namespace ImGui {
     }
     inline ImGuiTabItem* TabBarFindMostRecentlySelectedTabForActiveWindow(ImGuiTabBar* tab_bar) {
         using func_t = ImGuiTabItem* (*)(ImGuiTabBar*);
-        func_t func =
-            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igTabBarFindMostRecentlySelectedTabForActiveWindow"));
+        func_t func = reinterpret_cast<func_t>(
+            GetProcAddress(menuFramework, "igTabBarFindMostRecentlySelectedTabForActiveWindow"));
         return func(tab_bar);
     }
     inline ImGuiTabItem* TabBarGetCurrentTab(ImGuiTabBar* tab_bar) {
@@ -10783,16 +10816,17 @@ namespace ImGui {
     inline int PlotEx(ImGuiPlotType plot_type, const char* label, float (*values_getter)(void* data, int idx),
                       void* data, int values_count, int values_offset, const char* overlay_text, float scale_min,
                       float scale_max, const ImVec2 size_arg) {
-        using func_t = int (*)(ImGuiPlotType, const char*, float (*)(void*, int), void*,int, int, const char*, float,float, const ImVec2);
+        using func_t = int (*)(ImGuiPlotType, const char*, float (*)(void*, int), void*, int, int, const char*, float,
+                               float, const ImVec2);
         func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igPlotEx"));
-        return func(plot_type, label, values_getter, data, values_count,
-                    values_offset, overlay_text, scale_min, scale_max,
-                    size_arg);
+        return func(plot_type, label, values_getter, data, values_count, values_offset, overlay_text, scale_min,
+                    scale_max, size_arg);
     }
     inline void ShadeVertsLinearColorGradientKeepAlpha(ImDrawList* draw_list, int vert_start_idx, int vert_end_idx,
                                                        ImVec2 gradient_p0, ImVec2 gradient_p1, ImU32 col0, ImU32 col1) {
         using func_t = void (*)(ImDrawList*, int, int, ImVec2, ImVec2, ImU32, ImU32);
-        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igShadeVertsLinearColorGradientKeepAlpha"));
+        func_t func =
+            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igShadeVertsLinearColorGradientKeepAlpha"));
         return func(draw_list, vert_start_idx, vert_end_idx, gradient_p0, gradient_p1, col0, col1);
     }
     inline void ShadeVertsLinearUV(ImDrawList* draw_list, int vert_start_idx, int vert_end_idx, const ImVec2 a,
@@ -10935,7 +10969,8 @@ namespace ImGui {
     inline void DebugNodeDrawCmdShowMeshAndBoundingBox(ImDrawList* out_draw_list, const ImDrawList* draw_list,
                                                        const ImDrawCmd* draw_cmd, bool show_mesh, bool show_aabb) {
         using func_t = void (*)(ImDrawList*, const ImDrawList*, const ImDrawCmd*, bool, bool);
-        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igDebugNodeDrawCmdShowMeshAndBoundingBox"));
+        func_t func =
+            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igDebugNodeDrawCmdShowMeshAndBoundingBox"));
         return func(out_draw_list, draw_list, draw_cmd, show_mesh, show_aabb);
     }
     inline void DebugNodeFont(ImFont* font) {
@@ -10996,7 +11031,8 @@ namespace ImGui {
     inline void DebugNodeWindowsListByBeginStackParent(ImGuiWindow** windows, int windows_size,
                                                        ImGuiWindow* parent_in_begin_stack) {
         using func_t = void (*)(ImGuiWindow**, int, ImGuiWindow*);
-        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igDebugNodeWindowsListByBeginStackParent"));
+        func_t func =
+            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igDebugNodeWindowsListByBeginStackParent"));
         return func(windows, windows_size, parent_in_begin_stack);
     }
     inline void DebugNodeViewport(ImGuiViewportP* viewport) {
@@ -11049,7 +11085,8 @@ namespace ImGui {
                                                          const char* in_str, char in_marker_char,
                                                          unsigned char in_marker_pixel_value) {
         using func_t = void (*)(ImFontAtlas*, int, int, int, int, const char*, char, unsigned char);
-        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igImFontAtlasBuildRender8bppRectFromString"));
+        func_t func =
+            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igImFontAtlasBuildRender8bppRectFromString"));
         return func(atlas, x, y, w, h, in_str, in_marker_char, in_marker_pixel_value);
     }
     inline void ImFontAtlasBuildRender32bppRectFromString(ImFontAtlas* atlas, int x, int y, int w, int h,
@@ -11062,7 +11099,8 @@ namespace ImGui {
     }
     inline void ImFontAtlasBuildMultiplyCalcLookupTable(unsigned char out_table[256], float in_multiply_factor) {
         using func_t = void (*)(unsigned char[256], float);
-        func_t func = reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igImFontAtlasBuildMultiplyCalcLookupTable"));
+        func_t func =
+            reinterpret_cast<func_t>(GetProcAddress(menuFramework, "igImFontAtlasBuildMultiplyCalcLookupTable"));
         return func(out_table, in_multiply_factor);
     }
     inline void ImFontAtlasBuildMultiplyRectAlpha8(const unsigned char table[256], unsigned char* pixels, int x, int y,
