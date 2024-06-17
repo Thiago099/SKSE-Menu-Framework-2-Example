@@ -5,14 +5,6 @@
 - COMMONLIB_SSE_FOLDER
 
   Clone [this](https://github.com/CharmedBaryon/CommonLibSSE-NG) Repository, to somewhere safe and adds its path to this environment variable on Windows.
-
-- IMGUI_LIB_FOLDER
-
-  Clone [this](https://github.com/Thiago099/SKSE-Menu-Framework-SDK/tree/main)  Repository, to somewhere safe and adds its ImGui folder path to this environment variable on Windows.
-
-- SKYRIM_MODS_FOLDER
-
-  The skyrim mods folder is required to find the Menu framework library
   
 ## Optional ouput folder optional variables
 
@@ -20,4 +12,4 @@
 - WILDLANDER_OWRT_FOLDER
 - SKYRIM_OWRT_FOLDER
 - SKYRIM_MODS_FOLDER2
-
+- SKYRIM_MODS_FOLDER
