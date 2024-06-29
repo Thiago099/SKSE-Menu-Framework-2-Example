@@ -3,13 +3,6 @@ if(NOT DEFINED ENV{COMMONLIB_SSE_FOLDER})
   message(FATAL_ERROR "Missing COMMONLIB_SSE_FOLDER environment variable")
 endif()
 
-if(NOT DEFINED ENV{IMGUI_LIB_FOLDER})
-  message(FATAL_ERROR "Missing IMGUI_LIB_FOLDER environment variable")
-endif()
-
-if(NOT DEFINED ENV{SKYRIM_MODS_FOLDER})
-  message(FATAL_ERROR "Missing SKYRIM_MODS_FOLDER environment variable")
-endif()
 
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
